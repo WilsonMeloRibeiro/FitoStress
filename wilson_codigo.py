@@ -52,11 +52,18 @@ SUPPORTED_LANGUAGES = {
     'PTBR': 'PTBR.json',
     'EN': 'EN.json',
 }
-LANGUAGE_CODE = 'EN'
+Language_config_file = os.path.join(os.path.dirname(__file__), 'language_config.json')
+try:
+    with open(Language_config_file, 'r', encoding='utf-8') as f:        
+        lang_config = json.load(f)
+        global LANGUAGE_CODE 
+        LANGUAGE_CODE = lang_config.get("LanguageCode")
+except Exception as e:
+    LANGUAGE_CODE = 'PTBR'
 LANG_DATA = {}
 
 
-def load_language(lang_code='PTBR'):
+def load_language(lang_code):
     global LANGUAGE_CODE, LANG_DATA
     if lang_code not in SUPPORTED_LANGUAGES:
         lang_code = 'PTBR'
@@ -306,6 +313,9 @@ class MainWindow(QMainWindow):
                                     shortcut="Ctrl+D", triggered=self.clear_all_data)
         self.exit_action = QAction(GetFromLanguage("MenuFile", 4), self, shortcut="Ctrl+Q", triggered=self.close)
 
+        self.change_language = QAction(self.style().standardIcon(QStyle.SP_DesktopIcon), GetFromLanguage("MenuFile", 5), self,
+                                       triggered=self.change_language)
+        
         self.calc_action = QAction(self.style().standardIcon(QStyle.SP_MediaPlay), GetFromLanguage("MenuTools", 1), self,
                                    triggered=self.start_calculation)
         self.settings_action = QAction(self.style().standardIcon(QStyle.SP_FileDialogDetailedView), GetFromLanguage("MenuTools", 2), self,
@@ -329,6 +339,8 @@ class MainWindow(QMainWindow):
         file_menu.addAction(self.clear_action)
         file_menu.addSeparator()
         file_menu.addAction(self.exit_action)
+        file_menu.addSeparator()
+        file_menu.addAction(self.change_language)
 
         tools_menu = menubar.addMenu(GetFromLanguage("MenuTools", 0))
         tools_menu.addAction(self.calc_action)
@@ -351,6 +363,8 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self.calc_action)
         toolbar.addSeparator()
         toolbar.addAction(self.export_excel_action)
+        toolbar.addSeparator()
+        toolbar.addAction(self.change_language)
 
     def get_professional_group_style(self):
         """Retorna um estilo CSS profissional para QGroupBox."""
@@ -1388,16 +1402,18 @@ class IpasticAnalysis:
         # 40,1-60: Moderadamente suscetível
         # >60: Suscetível
         if pd.isna(rp_value):
-            return ("Não Classificado", "#CCCCCC")
+            return (getFromLanguage("Tolerance",0), "#CCCCCC")
         if rp_value <= 20:
-            return ("Tolerante", "#4CAF50")  # Verde
+            return (GetFromLanguage("Tolerance",1), "#4CAF50")  # Verde
         elif rp_value <= 40:
-            return ("Moderadamente Tolerante", "#8BC34A")  # Verde claro
+            return (GetFromLanguage("Tolerance", 2), "#8BC34A")  # Verde claro
         elif rp_value <= 60:
-            return ("Moderadamente Suscetível", "#FF9800")  # Laranja
+            return (GetFromLanguage("Tolerance", 3), "#FF9800")  # Laranja
         else:
-            return ("Suscetível", "#F44336")  # Vermelho
+            return (GetFromLanguage("Tolerance", 4), "#F44336")  # Vermelho
 
+
+    #TODO: FIX language
     def calculate_indices(self, data, classification_limits):
         """
         Calculates all stress tolerance indices from the input data.
@@ -1422,14 +1438,14 @@ class IpasticAnalysis:
         
         # Preservar ordem original dos genótipos
         # Primeiro criar um mapeamento da ordem original
-        genotipo_order = data['Genotipo'].drop_duplicates().tolist()
+        genotipo_order = data["Genotipo"].drop_duplicates().tolist()
         
         # Fazer groupby com sort=False para manter ordem original
-        indices = data.groupby('Genotipo', sort=False).agg({'Yp': 'mean', 'Ys': 'mean'}).reset_index()
+        indices = data.groupby("Genotipo", sort=False).agg({'Yp': 'mean', 'Ys': 'mean'}).reset_index()
         
         # Se ainda assim a ordem foi alterada, reordenar explicitamente
-        if indices['Genotipo'].tolist() != genotipo_order:
-            indices['_order'] = indices['Genotipo'].map({g: i for i, g in enumerate(genotipo_order)})
+        if indices["Genotipo"].tolist() != genotipo_order:
+            indices['_order'] = indices["Genotipo"].map({g: i for i, g in enumerate(genotipo_order)})
             indices = indices.sort_values('_order').drop('_order', axis=1).reset_index(drop=True)
 
         # Calculate indices with safeguards against division by zero
@@ -2522,6 +2538,8 @@ class MainWindow(QMainWindow):
                                    triggered=self.start_calculation)
         self.settings_action = QAction(self.style().standardIcon(QStyle.SP_FileDialogDetailedView), GetFromLanguage("MenuTools", 2), self,
                                        triggered=self.open_settings)
+        self.change_language = QAction(self.style().standardIcon(QStyle.SP_FileDialogDetailedView), GetFromLanguage("MenuFile", 5), self,
+                                       triggered=self.change_language)
         
         # Report actions
         self.indices_report_action = QAction(self.style().standardIcon(QStyle.SP_FileDialogDetailedView), GetFromLanguage("MenuReports", 1), self,
@@ -2541,6 +2559,8 @@ class MainWindow(QMainWindow):
         file_menu.addAction(self.clear_action)
         file_menu.addSeparator()
         file_menu.addAction(self.exit_action)
+        file_menu.addSeparator()
+        file_menu.addAction(self.change_language)
 
         tools_menu = menubar.addMenu(GetFromLanguage("MenuTools", 0))
         tools_menu.addAction(self.calc_action)
@@ -2563,6 +2583,8 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self.calc_action)
         toolbar.addSeparator()
         toolbar.addAction(self.export_excel_action)
+        toolbar.addSeparator()
+        toolbar.addAction(self.change_language)
 
     def get_professional_group_style(self):
         """Retorna um estilo CSS profissional para QGroupBox."""
@@ -3403,7 +3425,7 @@ class MainWindow(QMainWindow):
         """Creates the 'Data Input' tab with a table and instructions."""
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        info_label = QLabel("<b>Arraste e solte um arquivo (.csv, .xlsx) aqui ou use o menu 'Arquivo' -> 'Importar Dados'.</b>")
+        info_label = QLabel(GetFromLanguage("Dialogs", 43))
         info_label.setAlignment(Qt.AlignCenter)
         info_label.setStyleSheet("padding: 20px; background-color: #f0f0f0; border: 2px dashed #cccccc;")
         
@@ -3417,7 +3439,7 @@ class MainWindow(QMainWindow):
         self.remove_row_btn.setIcon(self.style().standardIcon(QStyle.SP_ArrowDown))
         self.remove_row_btn.clicked.connect(self.remove_table_row)
         
-        self.clear_cell_btn = QPushButton("Limpar Célula")
+        self.clear_cell_btn = QPushButton(GetFromLanguage("InputTab", 4))
         self.clear_cell_btn.setIcon(self.style().standardIcon(QStyle.SP_DialogResetButton))
         self.clear_cell_btn.clicked.connect(self.clear_selected_cells)
         
@@ -3500,19 +3522,19 @@ class MainWindow(QMainWindow):
         controls_layout = QHBoxLayout(controls_widget)
         
         # Analysis options
-        analysis_group = QGroupBox("Opções de Análise")
+        analysis_group = QGroupBox(GetFromLanguage("StatisticsTab", 0))
         analysis_group.setStyleSheet(self.get_professional_group_style())
         analysis_layout = QFormLayout(analysis_group)
         
-        self.stats_use_rankings = QCheckBox("Usar Rankings")
+        self.stats_use_rankings = QCheckBox(GetFromLanguage("StatisticsTab", 1))
         self.stats_use_rankings.setToolTip("Usa rankings ao invés de índices para análises")
-        analysis_layout.addRow("Dados:", self.stats_use_rankings)
+        analysis_layout.addRow(GetFromLanguage("StatisticsTab", 2), self.stats_use_rankings)
         
         self.correlation_method_stats = QComboBox()
         self.correlation_method_stats.addItems(['pearson', 'spearman', 'kendall'])
-        analysis_layout.addRow("Correlação:", self.correlation_method_stats)
+        analysis_layout.addRow(GetFromLanguage("StatisticsTab", 3), self.correlation_method_stats)
         
-        self.refresh_stats_btn = QPushButton("Atualizar Análises")
+        self.refresh_stats_btn = QPushButton(GetFromLanguage("StatisticsTab", 4))
         self.refresh_stats_btn.setIcon(self.style().standardIcon(QStyle.SP_BrowserReload))
         self.refresh_stats_btn.clicked.connect(self.refresh_statistical_analyses)
         analysis_layout.addRow(self.refresh_stats_btn)
@@ -3526,15 +3548,15 @@ class MainWindow(QMainWindow):
         
         self.cluster_method_combo = QComboBox()
         self.cluster_method_combo.addItems(['K-Means', 'Agglomerativo'])
-        cluster_layout.addRow("Método:", self.cluster_method_combo)
+        cluster_layout.addRow(GetFromLanguage("StatisticsTab", 5), self.cluster_method_combo)
         
         self.cluster_number_combo = QComboBox()
-        self.cluster_number_combo.addItem("Automático")
+        self.cluster_number_combo.addItem(GetFromLanguage("StatisticsTab", 6))  # Placeholder for "Select number of clusters"
         for i in range(2, 11):
             self.cluster_number_combo.addItem(str(i))
-        cluster_layout.addRow("N° Clusters:", self.cluster_number_combo)
+        cluster_layout.addRow(GetFromLanguage("StatisticsTab", 7), self.cluster_number_combo)
         
-        self.cluster_button = QPushButton("Executar")
+        self.cluster_button = QPushButton(GetFromLanguage("StatisticsTab", 8))
         self.cluster_button.clicked.connect(self.start_clustering_with_options)
         cluster_layout.addRow(self.cluster_button)
         
@@ -3549,33 +3571,33 @@ class MainWindow(QMainWindow):
         # Tab 1: Descriptive Statistics
         self.descriptive_table = QTableWidget()
         self.setup_table_copy_functionality(self.descriptive_table, "descriptive")
-        results_widget.addTab(self.descriptive_table, "Estatísticas Descritivas")
+        results_widget.addTab(self.descriptive_table, GetFromLanguage("StatisticsTab", 9))
         
         # Tab 2: Correlation Matrix
         self.correlation_table = QTableWidget()
         self.setup_table_copy_functionality(self.correlation_table, "correlation")
-        results_widget.addTab(self.correlation_table, "Matriz de Correlação")
+        results_widget.addTab(self.correlation_table, GetFromLanguage("StatisticsTab", 10))
         
         # Tab 3: Normality Tests
         self.normality_table = QTableWidget()
         self.setup_table_copy_functionality(self.normality_table, "normality")
-        results_widget.addTab(self.normality_table, "Testes de Normalidade")
+        results_widget.addTab(self.normality_table, GetFromLanguage("StatisticsTab", 11))
         
         # Tab 4: Outliers Detection
         self.outliers_table = QTableWidget()
         self.setup_table_copy_functionality(self.outliers_table, "outliers")
-        results_widget.addTab(self.outliers_table, "Detecção de Outliers")
+        results_widget.addTab(self.outliers_table, GetFromLanguage("StatisticsTab", 12))
         
         # Tab 5: Cluster Analysis
         self.cluster_analysis_table = QTableWidget()
         self.setup_table_copy_functionality(self.cluster_analysis_table, "cluster")
-        results_widget.addTab(self.cluster_analysis_table, "Análise de Clusters")
+        results_widget.addTab(self.cluster_analysis_table, GetFromLanguage("StatisticsTab", 13))
         
         
         # Tab 7: Heritability Analysis (NOVO - do artigo)
         self.heritability_table = QTableWidget()
         self.setup_table_copy_functionality(self.heritability_table, "heritability")
-        results_widget.addTab(self.heritability_table, "Herdabilidade")
+        results_widget.addTab(self.heritability_table, GetFromLanguage("StatisticsTab", 14))
         
         
         # Tab 9: Stability Analysis (NOVO - do artigo)
@@ -3584,7 +3606,7 @@ class MainWindow(QMainWindow):
         # Tab 10: MFV Analysis
         self.mfv_table = QTableWidget()
         self.setup_table_copy_functionality(self.mfv_table, "mfv")
-        results_widget.addTab(self.mfv_table, "MFV (Análise de Pertinência)")
+        results_widget.addTab(self.mfv_table, GetFromLanguage("StatisticsTab", 20))
         
         splitter.addWidget(results_widget)
         splitter.setSizes([150, 600])
@@ -3594,25 +3616,28 @@ class MainWindow(QMainWindow):
     def init_graph_controls(self):
         """Initializes all widgets for the unified graph control panel."""
         # --- Group Boxes ---
-        self.graph_type_group = QGroupBox(GetFromLanguage("GraphTab", 0))
-        self.vars_group = QGroupBox(GetFromLanguage("GraphTab", 1))
-        self.pca_group = QGroupBox(GetFromLanguage("GraphTab", 2))
-        self.dendro_group = QGroupBox(GetFromLanguage("GraphTab", 3))
-        self.heatmap_group = QGroupBox(GetFromLanguage("GraphTab", 4))
-        self.style_group = QGroupBox(GetFromLanguage("GraphTab", 5))
-        self.export_group = QGroupBox(GetFromLanguage("GraphTab", 6))
+        self.graph_type_group = QGroupBox(GetFromLanguage("GraphTabs", 0))
+        self.vars_group = QGroupBox(GetFromLanguage("GraphTabs", 1))
+        self.pca_group = QGroupBox(GetFromLanguage("GraphTabs", 2))
+        self.dendro_group = QGroupBox(GetFromLanguage("GraphTabs", 3))
+        self.heatmap_group = QGroupBox(GetFromLanguage("GraphTabs", 4))
+        self.style_group = QGroupBox(GetFromLanguage("GraphTabs", 5))
+        self.export_group = QGroupBox(GetFromLanguage("GraphTabs", 6))
 
         # --- Type Selection ---
         self.graph_type_combo = QComboBox()
-        self.graph_type_combo.addItems(GetFromLanguage("GraphTypes", 0))
-        self.use_rankings_graph = QCheckBox(GetFromLanguage("GraphTab", 27))
+        self.graph_type_combo.addItems([
+            GetFromLanguage("GraphTypes", 0), GetFromLanguage("GraphTypes", 1), GetFromLanguage("GraphTypes", 2), GetFromLanguage("GraphTypes", 3),
+            GetFromLanguage("GraphTypes", 4), GetFromLanguage("GraphTypes", 5), GetFromLanguage("GraphTypes", 6), GetFromLanguage("GraphTypes", 7)
+        ])
+        self.use_rankings_graph = QCheckBox(GetFromLanguage("GraphTypes", 8))
 
         # --- Variable Selection (Single) ---
         self.single_var_widget = QWidget()
         single_var_layout = QFormLayout(self.single_var_widget)
         single_var_layout.setContentsMargins(0, 0, 0, 0)
         self.single_var_combo = QComboBox()
-        single_var_layout.addRow(GetFromLanguage("GraphTab", 7), self.single_var_combo)
+        single_var_layout.addRow("Variável:", self.single_var_combo)
 
         # --- Variable Selection (Multi) ---
         self.multi_var_widget = QWidget()
@@ -3621,7 +3646,7 @@ class MainWindow(QMainWindow):
         
         # Available list
         available_layout = QVBoxLayout()
-        available_layout.addWidget(QLabel(GetFromLanguage("GraphTab", 8)))
+        available_layout.addWidget(QLabel("Disponíveis:"))
         self.multi_var_list_available = QListWidget()
         self.multi_var_list_available.setSelectionMode(QListWidget.ExtendedSelection)
         available_layout.addWidget(self.multi_var_list_available)
@@ -3641,7 +3666,7 @@ class MainWindow(QMainWindow):
 
         # Selected list
         selected_layout = QVBoxLayout()
-        selected_layout.addWidget(QLabel(GetFromLanguage("GraphTab", 9)))
+        selected_layout.addWidget(QLabel("Selecionadas:"))
         self.multi_var_list_selected = QListWidget()
         self.multi_var_list_selected.setSelectionMode(QListWidget.ExtendedSelection)
         selected_layout.addWidget(self.multi_var_list_selected)
@@ -3663,22 +3688,22 @@ class MainWindow(QMainWindow):
             self.heatmap_values_check.setParent(None)
         
         # --- Scatter Plot Axis Selection ---
-        self.scatter_group = QGroupBox("Eixos do Gráfico de Dispersão")
+        self.scatter_group = QGroupBox(GetFromLanguage("GraphTabs", 15))
         self.scatter_x_combo = QComboBox()
         self.scatter_y_combo = QComboBox()
         scatter_layout = QFormLayout(self.scatter_group)
-        scatter_layout.addRow(GetFromLanguage("GraphTab", 18), self.scatter_x_combo)
-        scatter_layout.addRow(GetFromLanguage("GraphTab", 19), self.scatter_y_combo)
+        scatter_layout.addRow(GetFromLanguage("GraphTabs", 16), self.scatter_x_combo)
+        scatter_layout.addRow(GetFromLanguage("GraphTabs", 17), self.scatter_y_combo)
 
         # --- 3D Graph Controls ---
-        self.graph_3d_group = QGroupBox("Eixos do Gráfico 3D")
+        self.graph_3d_group = QGroupBox(GetFromLanguage("GraphTabs", 18))
         self.graph_3d_x_combo = QComboBox()
         self.graph_3d_y_combo = QComboBox()
         self.graph_3d_z_combo = QComboBox()
         graph_3d_layout = QFormLayout(self.graph_3d_group)
-        graph_3d_layout.addRow(GetFromLanguage("GraphTab", 18), self.graph_3d_x_combo)
-        graph_3d_layout.addRow(GetFromLanguage("GraphTab", 19), self.graph_3d_y_combo)
-        graph_3d_layout.addRow(GetFromLanguage("GraphTab", 20), self.graph_3d_z_combo)
+        graph_3d_layout.addRow("Eixo X:", self.graph_3d_x_combo)
+        graph_3d_layout.addRow("Eixo Y:", self.graph_3d_y_combo)
+        graph_3d_layout.addRow("Eixo Z:", self.graph_3d_z_combo)
 
         # --- Style and Titles ---
         self.title_input = QLineEdit()
@@ -3689,7 +3714,7 @@ class MainWindow(QMainWindow):
         self.hue_combo.addItems(['Nenhum', 'Classificação por RP', 'Classificação por MFV'])
         self.palette_combo = QComboBox()
         self.palette_combo.addItems(['viridis', 'Set1', 'plasma', 'tab10', 'coolwarm', 'default'])
-        self.show_labels_check = QCheckBox(GetFromLanguage("GraphTab", 28))
+        self.show_labels_check = QCheckBox(GetFromLanguage("GraphTabs", 13))
 
         # --- Export ---
         self.export_format_combo = QComboBox()
@@ -3702,10 +3727,10 @@ class MainWindow(QMainWindow):
         self.export_dpi_spin.setToolTip('Resolução da imagem (pontos por polegada)')
 
         # --- Actions ---
-        self.auto_update_check = QCheckBox("Atualizar automaticamente")
+        self.auto_update_check = QCheckBox(GetFromLanguage("GraphTabs", 18))
         self.auto_update_check.setChecked(True)  # Enable by default
-        self.generate_graph_button = QPushButton(GetFromLanguage("GraphTab", 10))
-        self.export_graph_button = QPushButton(GetFromLanguage("GraphTab", 11))
+        self.generate_graph_button = QPushButton(GetFromLanguage("GraphTabs", 14))
+        self.export_graph_button = QPushButton(GetFromLanguage("GraphTabs", 15))
         
     def create_graphics_tab(self):
         """Creates the new unified and contextual graphics tab."""
@@ -3725,7 +3750,7 @@ class MainWindow(QMainWindow):
 
         # GroupBox 1: Type
         type_layout = QFormLayout(self.graph_type_group)
-        type_layout.addRow(GetFromLanguage("GraphTab", 12), self.graph_type_combo)
+        type_layout.addRow("Tipo:", self.graph_type_combo)
         # Criar widget container para o checkbox alinhado à esquerda
         ranking_widget = QWidget()
         ranking_layout = QHBoxLayout(ranking_widget)
@@ -3743,10 +3768,10 @@ class MainWindow(QMainWindow):
 
         # GroupBox 3: Specific Params
         pca_layout = QFormLayout(self.pca_group)
-        pca_layout.addRow(GetFromLanguage("GraphTab", 13), self.pca_components_spin)
-        pca_layout.addRow(GetFromLanguage("GraphTab", 18), self.pca_component_x_combo)
-        pca_layout.addRow(GetFromLanguage("GraphTab", 19), self.pca_component_y_combo)
-        pca_layout.addRow(GetFromLanguage("GraphTab", 14), self.pca_matrix_combo)
+        pca_layout.addRow("N° Componentes:", self.pca_components_spin)
+        pca_layout.addRow("Eixo X:", self.pca_component_x_combo)
+        pca_layout.addRow("Eixo Y:", self.pca_component_y_combo)
+        pca_layout.addRow("Matriz:", self.pca_matrix_combo)
         
         # Criar widget container para o checkbox alinhado à esquerda
         checkbox_widget = QWidget()
@@ -3760,9 +3785,9 @@ class MainWindow(QMainWindow):
         panel_layout.addWidget(self.pca_group)
 
         dendro_layout = QFormLayout(self.dendro_group)
-        dendro_layout.addRow(GetFromLanguage("GraphTab", 15), self.dendro_method_combo)
-        dendro_layout.addRow(GetFromLanguage("GraphTab", 16), self.dendro_metric_combo)
-        dendro_layout.addRow(GetFromLanguage("GraphTab", 17), self.dendro_groups_spin)
+        dendro_layout.addRow("Método:", self.dendro_method_combo)
+        dendro_layout.addRow("Métrica:", self.dendro_metric_combo)
+        dendro_layout.addRow("Nº Grupos:", self.dendro_groups_spin)
         
         # Criar widget container para o checkbox alinhado à esquerda
         dendro_color_widget = QWidget()
@@ -3774,7 +3799,7 @@ class MainWindow(QMainWindow):
         panel_layout.addWidget(self.dendro_group)
 
         heatmap_layout = QFormLayout(self.heatmap_group)
-        heatmap_layout.addRow(GetFromLanguage("GraphTab", 15), self.heatmap_method_combo)
+        heatmap_layout.addRow("Método:", self.heatmap_method_combo)
         # Criar widget container para o checkbox alinhado à esquerda
         heatmap_check_widget = QWidget()
         heatmap_check_layout = QHBoxLayout(heatmap_check_widget)
@@ -3788,12 +3813,12 @@ class MainWindow(QMainWindow):
 
         # GroupBox 4: Style
         style_layout = QFormLayout(self.style_group)
-        style_layout.addRow(GetFromLanguage("GraphTab", 21), self.title_input)
-        style_layout.addRow(GetFromLanguage("GraphTab", 18), self.xlabel_input)
-        style_layout.addRow(GetFromLanguage("GraphTab", 19), self.ylabel_input)
-        style_layout.addRow(GetFromLanguage("GraphTab", 20), self.zlabel_input)
-        style_layout.addRow(GetFromLanguage("GraphTab", 22), self.hue_combo)
-        style_layout.addRow(GetFromLanguage("GraphTab", 23), self.palette_combo)
+        style_layout.addRow(GetFromLanguage("GraphTabs", 7), self.title_input)
+        style_layout.addRow(GetFromLanguage("GraphTabs", 8), self.xlabel_input)
+        style_layout.addRow(GetFromLanguage("GraphTabs", 9), self.ylabel_input)
+        style_layout.addRow(GetFromLanguage("GraphTabs", 10), self.zlabel_input)
+        style_layout.addRow(GetFromLanguage("GraphTabs", 11), self.hue_combo)
+        style_layout.addRow(GetFromLanguage("GraphTabs", 12), self.palette_combo)
         # Criar widget container para o checkbox alinhado à esquerda
         labels_check_widget = QWidget()
         labels_check_layout = QHBoxLayout(labels_check_widget)
@@ -3805,8 +3830,8 @@ class MainWindow(QMainWindow):
         
         # GroupBox 5: Export
         export_layout = QFormLayout(self.export_group)
-        export_layout.addRow(GetFromLanguage("GraphTab", 24), self.export_format_combo)
-        export_layout.addRow(GetFromLanguage("GraphTab", 25), self.export_dpi_spin)
+        export_layout.addRow(GetFromLanguage("GraphTabs", 16), self.export_format_combo)
+        export_layout.addRow(GetFromLanguage("GraphTabs", 17), self.export_dpi_spin)
         panel_layout.addWidget(self.export_group)
 
         panel_layout.addStretch()
@@ -4086,20 +4111,20 @@ class MainWindow(QMainWindow):
         panel_layout.setSpacing(15)
         
         # Título do painel
-        title_label = QLabel("<h3>Análise de Regressão Múltipla</h3>")
+        title_label = QLabel(GetFromLanguage("MultipleRegressionTab", 0))
         title_label.setAlignment(Qt.AlignCenter)
         title_label.setStyleSheet("color: #333; margin: 0; padding: 10px;")
         panel_layout.addWidget(title_label)
         
         # Informações
-        info_label = QLabel("Analise relações lineares entre os índices de tolerância ao estresse e identifique os preditores mais importantes.")
+        info_label = QLabel(GetFromLanguage("MultipleRegressionTab", 10))
         info_label.setAlignment(Qt.AlignCenter)
         info_label.setWordWrap(True)
         info_label.setStyleSheet("padding: 10px; color: #666; font-size: 12px; background: #e8f5e8; border-radius: 4px;")
         panel_layout.addWidget(info_label)
         
         # Grupo de Configurações da regressão
-        config_group = QGroupBox("Configurações da Análise")
+        config_group = QGroupBox(GetFromLanguage("MultipleRegressionTab", 11))
         config_group.setStyleSheet(self.get_professional_group_style())
         config_layout = QFormLayout(config_group)
         config_layout.setSpacing(12)
@@ -4108,7 +4133,7 @@ class MainWindow(QMainWindow):
         # Variável dependente (Y)
         self.regression_y_var = QComboBox()
         self.regression_y_var.setStyleSheet(self.get_professional_combo_style())
-        config_layout.addRow("Variável Dependente (Y):", self.regression_y_var)
+        config_layout.addRow(GetFromLanguage("MultipleRegressionTab", 1), self.regression_y_var)
         
         # Variáveis independentes (X) - Lista com checkboxes
         self.regression_x_vars = QListWidget()
@@ -4131,27 +4156,27 @@ class MainWindow(QMainWindow):
                 color: white;
             }
         """)
-        config_layout.addRow("Variáveis Independentes (X):", self.regression_x_vars)
+        config_layout.addRow(GetFromLanguage("MultipleRegressionTab", 2), self.regression_x_vars)
         panel_layout.addWidget(config_group)
         
         # Grupo de Opções
-        options_group = QGroupBox("Opções de Análise")
+        options_group = QGroupBox(GetFromLanguage("MultipleRegressionTab", 12))
         options_group.setStyleSheet(self.get_professional_group_style())
         options_layout = QVBoxLayout(options_group)
         options_layout.setSpacing(8)
         options_layout.setContentsMargins(15, 20, 15, 15)
         
-        self.include_intercept = QCheckBox("Incluir intercepto")
+        self.include_intercept = QCheckBox(GetFromLanguage("MultipleRegressionTab", 13))
         self.include_intercept.setChecked(True)
         self.include_intercept.setStyleSheet("QCheckBox { font-size: 12px; padding: 4px; }")
         options_layout.addWidget(self.include_intercept)
         
-        self.standardize_vars = QCheckBox("Padronizar variáveis")
+        self.standardize_vars = QCheckBox(GetFromLanguage("MultipleRegressionTab", 14))
         self.standardize_vars.setChecked(False)
         self.standardize_vars.setStyleSheet("QCheckBox { font-size: 12px; padding: 4px; }")
         options_layout.addWidget(self.standardize_vars)
         
-        self.show_residuals = QCheckBox("Mostrar análise de resíduos")
+        self.show_residuals = QCheckBox(GetFromLanguage("MultipleRegressionTab", 15))
         self.show_residuals.setChecked(True)
         self.show_residuals.setStyleSheet("QCheckBox { font-size: 12px; padding: 4px; }")
         options_layout.addWidget(self.show_residuals)
@@ -4163,7 +4188,7 @@ class MainWindow(QMainWindow):
         # Botões de ação
         action_layout = QHBoxLayout()
         
-        self.update_regression_vars_btn = QPushButton("Atualizar Variáveis")
+        self.update_regression_vars_btn = QPushButton(GetFromLanguage("MultipleRegressionTab", 16))
         self.update_regression_vars_btn.setIcon(self.style().standardIcon(QStyle.SP_BrowserReload))
         self.update_regression_vars_btn.clicked.connect(self.update_regression_variables)
         self.update_regression_vars_btn.setStyleSheet("""
@@ -4183,7 +4208,7 @@ class MainWindow(QMainWindow):
         """)
         action_layout.addWidget(self.update_regression_vars_btn)
         
-        self.run_regression_btn = QPushButton("Executar Regressão")
+        self.run_regression_btn = QPushButton(GetFromLanguage("MultipleRegressionTab", 3))
         self.run_regression_btn.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
         self.run_regression_btn.clicked.connect(self.run_regression_analysis)
         self.run_regression_btn.setStyleSheet("""
@@ -4211,7 +4236,7 @@ class MainWindow(QMainWindow):
         results_layout.setContentsMargins(15, 15, 15, 15)
         
         # Título da área de resultados
-        results_title = QLabel("<h3>Resultados da Regressão</h3>")
+        results_title = QLabel(GetFromLanguage("MultipleRegressionTab", 4))
         results_title.setAlignment(Qt.AlignCenter)
         results_title.setStyleSheet("color: #333; margin-bottom: 15px; padding: 10px;")
         results_layout.addWidget(results_title)
@@ -4254,7 +4279,7 @@ class MainWindow(QMainWindow):
             }
         """)
         summary_layout.addWidget(self.regression_summary_text)
-        self.regression_results_tabs.addTab(self.regression_summary_tab, "Resumo do Modelo")
+        self.regression_results_tabs.addTab(self.regression_summary_tab, GetFromLanguage("MultipleRegressionTab", 17))
         self.regression_results_tabs.setStyleSheet("""""")
         
         # Aba 2: Coeficientes
@@ -4278,7 +4303,7 @@ class MainWindow(QMainWindow):
             }
         """)
         coef_layout.addWidget(self.regression_coef_table)
-        self.regression_results_tabs.addTab(self.regression_coef_tab, "Coeficientes")
+        self.regression_results_tabs.addTab(self.regression_coef_tab, GetFromLanguage("MultipleRegressionTab", 18))
         
         # Aba 3: Diagnósticos
         self.regression_diag_tab = QWidget()
@@ -4301,7 +4326,7 @@ class MainWindow(QMainWindow):
             }
         """)
         diag_layout.addWidget(self.regression_diag_table)
-        self.regression_results_tabs.addTab(self.regression_diag_tab, "Diagnósticos")
+        self.regression_results_tabs.addTab(self.regression_diag_tab, GetFromLanguage("MultipleRegressionTab", 19))
         
         # Aba 4: Análise de Resíduos
         self.regression_residuals_tab = QWidget()
@@ -4346,7 +4371,7 @@ class MainWindow(QMainWindow):
             }
         """)
         stats_layout.addWidget(self.regression_residuals_text)
-        self.residuals_subtab_widget.addTab(self.residuals_stats_tab, "Estatísticas")
+        self.residuals_subtab_widget.addTab(self.residuals_stats_tab, GetFromLanguage("MultipleRegressionTab", 20))
         
         # Sub-aba 2: Tabela de Valores Detalhados
         self.residuals_table_tab = QWidget()
@@ -4375,10 +4400,10 @@ class MainWindow(QMainWindow):
         self.residuals_values_table.setAlternatingRowColors(True)
         table_layout.addWidget(self.residuals_values_table)
         
-        self.residuals_subtab_widget.addTab(self.residuals_table_tab, "Valores Detalhados")
+        self.residuals_subtab_widget.addTab(self.residuals_table_tab, GetFromLanguage("MultipleRegressionTab", 21))
         
         residuals_layout.addWidget(self.residuals_subtab_widget)
-        self.regression_results_tabs.addTab(self.regression_residuals_tab, "Resíduos")
+        self.regression_results_tabs.addTab(self.regression_residuals_tab, GetFromLanguage("MultipleRegressionTab", 22))
         
         results_layout.addWidget(self.regression_results_tabs, 1)
         
@@ -4428,7 +4453,7 @@ class MainWindow(QMainWindow):
         header_layout = QVBoxLayout(header_widget)
         
         # Título
-        title_label = QLabel("Resultados da Análise de Componentes Principais (PCA)")
+        title_label = QLabel(GetFromLanguage("PCATabs", 0))
         title_label.setStyleSheet("""
             QLabel {
                 font-size: 18px;
@@ -4448,7 +4473,7 @@ class MainWindow(QMainWindow):
         controls_layout.setContentsMargins(0, 15, 0, 10)
         
         # Seleção do tipo de dados
-        data_type_label = QLabel("Fonte dos Dados:")
+        data_type_label = QLabel(GetFromLanguage("PCATabs", 1))
         data_type_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #2c3e50;")
         self.pca_data_type_combo = QComboBox()
         self.pca_data_type_combo.addItems(["Dados Originais (Índices)", "Rankings"])
@@ -4457,7 +4482,7 @@ class MainWindow(QMainWindow):
         
         
         # Seleção do número de componentes
-        components_label = QLabel("Número de Componentes:")
+        components_label = QLabel(GetFromLanguage("PCATabs", 2))
         components_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #2c3e50;")
         self.pca_n_components_spin = QSpinBox()
         self.pca_n_components_spin.setRange(2, 10)
@@ -4465,7 +4490,7 @@ class MainWindow(QMainWindow):
         
         
         # Botão para executar PCA
-        self.run_pca_button = QPushButton("Executar Análise PCA")
+        self.run_pca_button = QPushButton(GetFromLanguage("PCATabs", 3))
         self.run_pca_button.setStyleSheet("""
             QPushButton {
                 background: #27ae60;
@@ -4487,7 +4512,7 @@ class MainWindow(QMainWindow):
         self.run_pca_button.clicked.connect(self.execute_pca_for_results)
         
         # Status da PCA
-        self.pca_status_label = QLabel("Execute a análise para visualizar os resultados")
+        self.pca_status_label = QLabel(GetFromLanguage("PCATabs", 4 ))
         self.pca_status_label.setStyleSheet("""
             QLabel {
                 color: #7f8c8d;
@@ -4558,7 +4583,7 @@ class MainWindow(QMainWindow):
         eigenvalues_layout = QVBoxLayout(eigenvalues_widget)
         eigenvalues_layout.setContentsMargins(15, 15, 15, 15)
         
-        eigenvalues_title = QLabel("Autovalores e Variância Explicada")
+        eigenvalues_title = QLabel(GetFromLanguage("PCATabs", 5))
         eigenvalues_title.setStyleSheet("""
             QLabel {
                 font-size: 16px;
@@ -4596,7 +4621,7 @@ class MainWindow(QMainWindow):
             }
         """)
         eigenvalues_layout.addWidget(self.pca_eigenvalues_table)
-        self.pca_results_tabs.addTab(eigenvalues_widget, "Autovalores")
+        self.pca_results_tabs.addTab(eigenvalues_widget, GetFromLanguage("PCATabs", 6))
         self.pca_results_tabs.setStyleSheet("""
             QTabWidget{
                
@@ -4610,7 +4635,7 @@ class MainWindow(QMainWindow):
         loadings_layout = QVBoxLayout(loadings_widget)
         loadings_layout.setContentsMargins(15, 15, 15, 15)
         
-        loadings_title = QLabel("Cargas das Variáveis (Loadings)")
+        loadings_title = QLabel(GetFromLanguage("PCATabs", 7))
         loadings_title.setStyleSheet("""
             QLabel {
                 font-size: 16px;
@@ -4648,14 +4673,14 @@ class MainWindow(QMainWindow):
             }
         """)
         loadings_layout.addWidget(self.pca_loadings_table)
-        self.pca_results_tabs.addTab(loadings_widget, "Cargas das Variáveis")
+        self.pca_results_tabs.addTab(loadings_widget, GetFromLanguage("PCATabs", 8))
         
         # 3. Aba de Coordenadas dos Indivíduos
         coordinates_widget = QWidget()
         coordinates_layout = QVBoxLayout(coordinates_widget)
         coordinates_layout.setContentsMargins(15, 15, 15, 15)
         
-        coordinates_title = QLabel("Coordenadas dos Indivíduos")
+        coordinates_title = QLabel(GetFromLanguage("PCATabs", 9))
         coordinates_title.setStyleSheet("""
             QLabel {
                 font-size: 16px;
@@ -4693,7 +4718,7 @@ class MainWindow(QMainWindow):
             }
         """)
         coordinates_layout.addWidget(self.pca_coordinates_table)
-        self.pca_results_tabs.addTab(coordinates_widget, "Coordenadas dos Indivíduos")
+        self.pca_results_tabs.addTab(coordinates_widget, GetFromLanguage("PCATabs", 9))
 
     def execute_pca_for_results(self):
         """Executa a PCA e popula as tabelas de resultados."""
@@ -5226,6 +5251,29 @@ class MainWindow(QMainWindow):
 
         self.status_bar.showMessage("Dados limpos. Pronto para importar um novo arquivo.", 5000)
         self.update_ui_state()
+
+    def change_language(self):
+        print("DEBUG: change_language called")
+        global LANGUAGE_CODE
+        Language_config_file = os.path.join(os.path.dirname(__file__), 'language_config.json')
+        try:
+            with open(Language_config_file, 'r', encoding='utf-8') as f:
+                print(f.read())
+            with open(Language_config_file, 'w') as f:        
+                global LANGUAGE_CODE
+                if(LANGUAGE_CODE == "EN"):
+                    f.write("""{\n    "LanguageCode": "PTBR"\n}""")
+                    print("DEBUG: Writing language code 'a' to config file")
+                else:
+                    print("DEBUG: Writing language code 'b' to config file")
+                    f.write("""{\n    "LanguageCode": "EN"\n}""")
+        except Exception as e:
+            print("DEBUG: Error writing language config:", e)
+        
+        self.update_ui_state()
+        return LANGUAGE_CODE
+
+
 
     def start_calculation(self):
         """Initiates the index calculation in a worker thread."""
@@ -6946,6 +6994,7 @@ class MainWindow(QMainWindow):
         self.input_table.setColumnCount(3)
         self.input_table.setHorizontalHeaderLabels(self.original_column_names)
         for i, row in self.data.iterrows():
+            #TODO:
             self.input_table.setItem(i, 0, QTableWidgetItem(str(row['Genotipo'])))
             self.input_table.setItem(i, 1, QTableWidgetItem(str(row['Yp'])))
             self.input_table.setItem(i, 2, QTableWidgetItem(str(row['Ys'])))
