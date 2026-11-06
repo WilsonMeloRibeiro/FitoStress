@@ -411,6 +411,7 @@ class MainWindow(QMainWindow):
             }
         """
 
+    #TODO: Analizar essa função
     def toggle_report_sections(self, state):
         """Marca ou desmarca todas as checkboxes de seção do relatório."""
         check_state = Qt.Checked if state == Qt.Checked else Qt.Unchecked
@@ -1349,6 +1350,7 @@ if not PLOTLY_AVAILABLE:
 if not OPENPYXL_AVAILABLE:
     MISSING_DEPENDENCIES.append("openpyxl (para exportação Excel)")
 
+#TODO: FIX RETURN
 def check_dependency_for_feature(feature_name, dependency_flag, dependency_name):
     """Check if a dependency is available for a specific feature."""
     if not dependency_flag:
@@ -1387,6 +1389,8 @@ class IpasticAnalysis:
             results.append({'Variável': col, 'Outliers Z-score': outliers_z, 'Outliers IQR': outliers_iqr})
         return pd.DataFrame(results)
 
+
+    #TODO:FIX LIMIT=NONE
     def classificar_tolerancia(self, rp_value, limits=None):
         """
         Classifica o genótipo baseado no valor de RP (Relative Performance).
@@ -1402,7 +1406,7 @@ class IpasticAnalysis:
         # 40,1-60: Moderadamente suscetível
         # >60: Suscetível
         if pd.isna(rp_value):
-            return (getFromLanguage("Tolerance",0), "#CCCCCC")
+            return (GetFromLanguage("Tolerance",0), "#CCCCCC")
         if rp_value <= 20:
             return (GetFromLanguage("Tolerance",1), "#4CAF50")  # Verde
         elif rp_value <= 40:
@@ -2462,6 +2466,7 @@ class MainWindow(QMainWindow):
         self.progress_bar.setVisible(False)
         self.status_bar.addPermanentWidget(self.progress_bar)
 
+    #TODO:FIX DUPLICATA
     def on_table_item_changed(self, item):
         """
         Called when a cell in the input table is changed by the user.
@@ -2586,6 +2591,7 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
         toolbar.addAction(self.change_language)
 
+    #TODO:FIX DUPLICATA
     def get_professional_group_style(self):
         """Retorna um estilo CSS profissional para QGroupBox."""
         return """
@@ -5253,6 +5259,7 @@ class MainWindow(QMainWindow):
         self.update_ui_state()
 
     def change_language(self):
+        QMessageBox.warning(self, GetFromLanguage("LanguageChangePopup", 0), GetFromLanguage("LanguageChangePopup", 1))
         print("DEBUG: change_language called")
         global LANGUAGE_CODE
         Language_config_file = os.path.join(os.path.dirname(__file__), 'language_config.json')
@@ -5274,7 +5281,7 @@ class MainWindow(QMainWindow):
         return LANGUAGE_CODE
 
 
-
+    #TODO:INVESTIGATE IF SEPARETA TREAD FUNCTION CALLED
     def start_calculation(self):
         """Initiates the index calculation in a worker thread."""
         self.data = self.get_data_from_table()
@@ -7512,6 +7519,7 @@ class MainWindow(QMainWindow):
 
     def _perform_regression_analysis(self, y_var, x_vars, include_intercept, standardize, show_residuals):
         """Executa a análise de regressão (método para worker thread)."""
+        #TODO:FIX IMPORTS
         try:
             import numpy as np
             import pandas as pd

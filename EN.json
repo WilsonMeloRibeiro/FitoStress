@@ -1,4 +1,8 @@
 {
+    "LanguageChangePopup":[
+        "ATENÇÃO",
+        "Reinicialize o programa para que a alteração de idioma tenha efeito."
+    ],
     "MainWindowTitle": [
         "iPASTIC Desktop"
     ],
