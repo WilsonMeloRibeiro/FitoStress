@@ -57,6 +57,13 @@ O projeto foi desenvolvido utilizando Python e bibliotecas voltadas ao processam
 | Pytest | Testes e validação das funções |
 | PyInstaller | Empacotamento da aplicação |
 
+## 📥 Download
+
+A versão 1.0.0 do FitoStress está disponível para download na página de lançamentos do GitHub.
+
+[⬇️ Baixar FitoStress — Versão 1.0.0](https://github.com/WilsonMeloRibeiro/FitoStress/releases/tag/v1.0.0)
+
+Acesse a página de releases para baixar o executável e consultar os arquivos disponibilizados para essa versão.
 
 ## 🎯 Objetivo do projeto
 
